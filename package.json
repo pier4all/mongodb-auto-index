@@ -1,0 +1,37 @@
+{
+  "name": "mongodb-auto-index",
+  "version": "1.0.0",
+  "description": "Automatic index suggestion from MongoDB aggregations and queries",
+  "main": "autoindex.js",
+  "scripts": {
+    "test": "tap test/*.test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pier4all/mongodb-auto-index.git"
+  },
+  "keywords": [
+    "mongodb",
+    "indexing",
+    "optimization"
+  ],
+  "author": {
+    "name": "Lucía de Espona Pernas",
+    "url": "https://github.com/espona"
+  },
+  "contributors": [
+      {
+          "name": "Lucía de Espona Pernas",
+          "url": "https://github.com/espona"
+      },
+      {
+          "name": "Jean-Claude Schmidig",
+          "url": "https://github.com/jcschmidig"
+      }
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/pier4all/mongodb-auto-index/issues"
+  },
+  "homepage": "https://github.com/pier4all/mongodb-auto-index#readme"
+}
