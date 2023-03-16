@@ -44,9 +44,9 @@ const jsonAggGroupAliases4 = JSON.stringify({ "aggregate": "test_group_alias3", 
 const jsonMatchMultipleAliases1 = JSON.stringify({ "aggregate": "test_mult_aliases", "collection": "test_collection", "pipeline": [{"$addFields": {"salary": 10}}, {"$addFields": {"age": "$o.age"}}, {"$addFields": {"years": "$age"}}, {"$match": {"years": 35, "salary": 5 }}], "allowDiskUse":true})
 const jsonMatchMultipleAliases2 = JSON.stringify({ "aggregate": "test_mult_aliases", "collection": "test_collection", "pipeline": [{"$project": {"salary": "$payment"}}, {"$project": {"age": "$o.age", "billed": 0}}, {"$addFields": {"years": "$age"}}, {"$match": {"years": 35, "salary": 5 }}], "allowDiskUse":true})
 const jsonMatchPartialAliases = JSON.stringify({ "aggregate": "test_part_aliases", "collection": "test_collection", "pipeline": [{ "$project" :{ "lines": "$edges", "color":1 } }, { "$addFields" :{ "color": "none",  "numedges": "$lines.count" } }, { "$match":{ "lines.size": 5, "numedges": {"$gt": 2},  "color": "none" }}], "allowDiskUse":true})
-
 const jsonComplexExpr = JSON.stringify({ "aggregate": "test_expr", "collection": "test_collection", "pipeline": [{ "$match":{"$expr": {"$eq": ["$username", "lucia.espona@fhnw.ch"]}}}], "allowDiskUse":true})
 const jsonLogicalComplexExpr = JSON.stringify({ "aggregate": "test_logical_expr", "collection": "test_collection", "pipeline": [{ "$match":{ "$and": [{ "$expr": {"$eq": ["$employee", "60a17c017c75ab7cd56da552"]}},{"$expr": {"$gte": ["$date", {"$toDate": "2020-07-13T00:00:00.000+00:00"}]}}]}}], "allowDiskUse":true})
+const jsonArrayField = {"aggregate": "test_array", "collection": "test_collection", "pipeline": [{"$match": {"c_orders_1": {"$size": 0}}}, {"$match": {"$expr": {"$ne": [ "$c_orders_2", [2]]}}}, {"$lookup": {"from": "scale1", "pipeline": [ {"$match": {"c_date": new Date(), "c_orders_3": {"$eq": []}}} ]}} ]}
 
 // test initialization
 tap.before(async function() { 
@@ -440,6 +440,18 @@ tap.test('generate index for match stage with logical op with complex expr', asy
 
   childTest.equal(indexes.length, 1)
   childTest.equal(JSON.stringify(indexes[0].key), JSON.stringify({"employee":1,"date":1}))
+  childTest.end()
+})
+
+tap.test('generate index for stage with logical op that compares to an array', async (childTest) => {
+  const aggregation = new Aggregation(jsonArrayField.name, jsonArrayField.pipeline, jsonArrayField.collection) 
+   jsonArrayField
+  const generator = new Generator()
+
+  const indexes = generator.generateIndexes(aggregation)
+
+  childTest.equal(indexes.length, 1)
+  childTest.equal(JSON.stringify(indexes[0].key), JSON.stringify({"c_date":1}))
   childTest.end()
 })
 

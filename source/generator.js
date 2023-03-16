@@ -64,6 +64,28 @@ class Generator {
     }
   }
 
+  isFieldArray(comparison){
+    if ((!!comparison) && typeof(comparison) == 'object'){
+      if (comparison.constructor === Array) {
+        return true
+      } else {
+        if (comparison.constructor === Object){
+          let result = false
+          for(const [key, value] of Object.entries(comparison)){
+            if  (key == '$eq' || key == '$ne') {
+              result = result || this.isFieldArray(value)
+            } else if (key == '$size') {
+              result = true
+            }
+            if (result) break
+          }
+          return result
+        }
+      }
+    } 
+    return false
+  }
+
   getMatchIndex(operator, stage, order, sequence, aggregation, name) {
     // $match can use an index to filter documents if $match is the first stage in a pipeline or 
     // if the previous ones are of a type that is moved for later by mongo.
@@ -82,7 +104,9 @@ class Generator {
     // loop over match stage elements
     for (const [key, index] of Object.entries(elementDict)) {
       if (!key.startsWith('$')){
-        indexKey[key] = 1          
+        if (!this.isFieldArray(index)) {
+          indexKey[key] = 1          
+        }
       } else {
         if (LOGIC_OPS.includes(key)) {
           //deal with logical operator clauses
@@ -114,6 +138,26 @@ class Generator {
     }
   }
 
+  processCompOperator(comparisonFields){
+    let compIndex = {}
+    let isArray = false
+
+    for (let compField of comparisonFields) {
+      isArray = isArray || this.isFieldArray(compField)
+    }
+    
+    if (!isArray){
+      for (let compField of comparisonFields) {
+        if (String(compField).startsWith('$') && !String(compField).startsWith('$$')){
+          compIndex[compField.replace('$', '')] = 1  
+          // only add the first element
+          break
+        }
+      }  
+    }
+    return compIndex
+  }
+
   processExprOperator(elementExpr){
     let exprIndex = {}
     let exprOp = Object.keys(elementExpr)[0]
@@ -121,14 +165,8 @@ class Generator {
     // TODO: check other types of operators
     if (COMPARISON_OPS.includes(exprOp)) {
       let comparisonFields = elementExpr[exprOp]
-      for (let compField of comparisonFields) {
-        if (String(compField).startsWith('$') && !String(compField).startsWith('$$')){
-          exprIndex[compField.replace('$', '')] = 1  
-          // only add the first element
-          break
-        }
-      }
-      return exprIndex
+      let compIndex = this.processCompOperator(comparisonFields)
+      return compIndex
     } else if (LOGIC_OPS.includes(exprOp)) {
       //deal with logical operator clauses
       return this.processLogicalOperator(elementExpr[exprOp])
@@ -145,21 +183,18 @@ class Generator {
         } else {
           if (LOGIC_OPS.includes(param)) {
             const logicIndex = this.processLogicalOperator(logicParam[param])
-            Object.keys(logicIndex).forEach(function(field, pos) {
+            Object.keys(logicIndex).forEach(function(field, _) {
               logicfields[field] = 1          
             })      
           } else if (COMPARISON_OPS.includes(param)) {
             let comparisonFields = logicParam[param]
-            for (let compField of comparisonFields) {
-              if (String(compField).startsWith('$') && !String(compField).startsWith('$$')){
-                logicfields[compField.replace('$', '')] = 1  
-                // only add the first element
-                break
-              }
-            }  
+            let compIndex = this.processCompOperator(comparisonFields)
+            Object.keys(compIndex).forEach(function(field, _) {
+              logicfields[field] = 1          
+            }) 
           } else if (param === '$expr'){
             let exprIndex =  this.processExprOperator(logicParam[param])
-            Object.keys(exprIndex).forEach(function(field, pos) {
+            Object.keys(exprIndex).forEach(function(field, _) {
               logicfields[field] = 1          
              })             
           }
@@ -182,7 +217,6 @@ class Generator {
     }
 
     const elementDict = stage[operator]
-
   
     let indexKey = {}
     // loop over match stage elements
